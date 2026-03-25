@@ -78,8 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
             {children}
+            <footer className="mt-10 border-t border-border pt-4 pb-2 text-center text-xs text-muted-foreground">
+              Powered by Agila Tax Management Services &copy; {new Date().getFullYear()}
+            </footer>
           </main>
         </div>
       </div>
@@ -239,7 +242,7 @@ function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: SidebarProps) 
 
           <button
             onClick={async () => {
-              await authClient.signOut();
+              try { await authClient.signOut(); } catch { /* ignore network errors */ }
               router.push('/sign-in');
             }}
             className={`flex items-center ${isExpanded ? 'gap-3 px-3' : 'justify-center'} p-3 w-full rounded-xl text-red-400 hover:bg-red-900/20 transition`}

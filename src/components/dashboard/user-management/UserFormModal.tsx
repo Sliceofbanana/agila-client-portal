@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/user-management/components/UserFormModal.tsx
+// src/components/dashboard/user-management/UserFormModal.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';

@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/user-management/components/UserDeleteModal.tsx
+// src/components/dashboard/user-management/UserDeleteModal.tsx
 'use client';
 
 import React, { useState } from 'react';

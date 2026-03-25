@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/user-management/components/UserReactivateModal.tsx
+// src/components/dashboard/user-management/UserReactivateModal.tsx
 'use client';
 
 import React, { useState } from 'react';

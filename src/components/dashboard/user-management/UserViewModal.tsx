@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/user-management/components/UserViewModal.tsx
+// src/components/dashboard/user-management/UserViewModal.tsx
 'use client';
 
 import React from 'react';

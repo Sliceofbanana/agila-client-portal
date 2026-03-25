@@ -1,8 +1,9 @@
-// src/app/(auth)/sign-in/components/SignInForm.tsx
+// src/components/auth/SignInForm.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { z } from 'zod';
 import { authClient } from '@/lib/auth-client';
 import { useToast } from '@/context/ToastContext';
@@ -59,7 +60,7 @@ export default function SignInForm(): React.ReactNode {
     setSubmitting(true);
     setErrors({});
 
-    const INTERNAL_ROLES = ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE'] as const;
+    const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE', 'CLIENT'] as const;
 
     try {
       const { data: signInData, error: authError } = await authClient.signIn.email({
@@ -73,18 +74,32 @@ export default function SignInForm(): React.ReactNode {
         return;
       }
 
-      // Ensure only internal users (SUPER_ADMIN, ADMIN, EMPLOYEE) can access this portal.
-      // ClientUser accounts authenticate through a separate portal.
       const role = (signInData?.user as { role?: string } | undefined)?.role;
-      if (!role || !(INTERNAL_ROLES as readonly string[]).includes(role)) {
+      if (!role || !(VALID_ROLES as readonly string[]).includes(role)) {
         await authClient.signOut();
         setSubmitting(false);
-        showError('Access denied', 'This portal is for internal staff only.');
+        showError('Access denied', 'Your account does not have access to this portal.');
         return;
       }
 
       success('Welcome back!', 'You have signed in successfully.');
-      router.push('/dashboard');
+
+      // Redirect to callbackUrl if present (same-origin paths only)
+      const rawCallback = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('callbackUrl')
+        : null;
+      const callbackUrl =
+        rawCallback && rawCallback.startsWith('/') && !rawCallback.startsWith('//')
+          ? rawCallback
+          : null;
+
+      if (callbackUrl) {
+        router.push(callbackUrl);
+      } else if (role === 'CLIENT') {
+        router.push('/select-business');
+      } else {
+        router.push('/dashboard');
+      }
     } catch {
       setSubmitting(false);
       showError('Sign-in failed', 'An unexpected error occurred. Please try again.');
@@ -157,7 +172,7 @@ export default function SignInForm(): React.ReactNode {
         {/* Dev bypass */}
         <button
           type="button"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push('/select-business')}
           className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-md text-sm transition-colors border border-slate-300"
         >
           Go to Dashboard (Dev Bypass)
@@ -173,18 +188,18 @@ export default function SignInForm(): React.ReactNode {
         >
           Back
         </button>
-        <a
+        <Link
           href="/register-account"
           className="text-sm text-slate-500 hover:text-slate-700 transition"
         >
           Create New Account
-        </a>
-        <a
+        </Link>
+        <Link
           href="/forget-password"
           className="text-sm text-slate-500 hover:text-slate-700 transition"
         >
           Forgot Password
-        </a>
+        </Link>
       </div>
     </div>
   );

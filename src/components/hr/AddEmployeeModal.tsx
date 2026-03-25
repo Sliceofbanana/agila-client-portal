@@ -1,4 +1,4 @@
-// src/app/(portal)/portal/hr/employee-management/components/AddEmployeeModal.tsx
+// src/components/hr/AddEmployeeModal.tsx
 'use client';
 
 import React, { useState, useCallback } from 'react';

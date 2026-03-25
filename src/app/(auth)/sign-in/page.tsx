@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import SignInForm from './components/SignInForm';
+import SignInForm from '@/components/auth/SignInForm';
 
 export default function LoginPage(): React.ReactNode {
   return (

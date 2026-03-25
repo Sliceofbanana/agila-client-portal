@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/user-management/components/UserManagement.tsx
+// src/components/dashboard/user-management/UserManagement.tsx
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
