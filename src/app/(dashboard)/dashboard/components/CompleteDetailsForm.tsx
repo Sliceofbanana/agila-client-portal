@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Check, Building2, MapPin, User, Briefcase } from 'lucide-react';
+import { X, Check, Building2, User, Briefcase } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -15,9 +15,8 @@ const CLIENT_NUMBER = 'CLT-00421';
 
 const STEPS = [
   { id: 1, label: 'Core Info',  icon: Building2 },
-  { id: 2, label: 'BIR Info',   icon: MapPin },
-  { id: 3, label: 'Owner Info', icon: User },
-  { id: 4, label: 'Operations', icon: Briefcase },
+  { id: 2, label: 'Owner Info', icon: User },
+  { id: 3, label: 'Operations', icon: Briefcase },
 ] as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,14 +26,7 @@ interface FormData {
   businessName: string;
   businessEntity: string;
   branchType: string;
-  // Step 2
-  tin: string;
-  branchCode: string;
-  rdoCode: string;
-  registeredAddress: string;
-  zipCode: string;
-  birContactNumber: string;
-  // Step 3 — Individual
+  // Step 2 — Individual
   fullName: string;
   dateOfBirth: string;
   civilStatus: string;
@@ -65,8 +57,7 @@ interface FormData {
 
 const INITIAL_FORM: FormData = {
   businessName: '', businessEntity: '', branchType: '',
-  tin: '', branchCode: '', rdoCode: '', registeredAddress: '', zipCode: '', birContactNumber: '',
-  fullName: '', dateOfBirth: '', civilStatus: '', gender: '', citizenship: '', placeOfBirth: '',
+  fullName: '',   dateOfBirth: '', civilStatus: '', gender: '', citizenship: '', placeOfBirth: '',
   residentialAddress: '', prcLicenseNo: '', primaryIdType: '', primaryIdNumber: '',
   personalEmail: '', mobileNumber: '', telephoneNumber: '',
   mothersName: '', fathersName: '', spouseName: '', spouseEmployment: '', spouseTin: '',
@@ -171,81 +162,9 @@ function Step1({ data, set }: StepProps): React.ReactElement {
   );
 }
 
-// ─── Step 2: BIR Information ──────────────────────────────────────────────────
+// ─── Step 2: Owner / Individual Information ────────────────────────────────────
 
 function Step2({ data, set }: StepProps): React.ReactElement {
-  return (
-    <div className="space-y-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">BIR Information</p>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="TIN" required>
-          <input
-            type="text"
-            value={data.tin}
-            onChange={e => set('tin', e.target.value)}
-            placeholder="000-000-000-000"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Branch Code">
-          <input
-            type="text"
-            value={data.branchCode}
-            onChange={e => set('branchCode', e.target.value)}
-            placeholder="e.g. 00000"
-            className={inputCls}
-          />
-        </Field>
-      </div>
-
-      <Field label="RDO Code" required>
-        <input
-          type="text"
-          value={data.rdoCode}
-          onChange={e => set('rdoCode', e.target.value)}
-          placeholder="e.g. 083"
-          className={inputCls}
-        />
-      </Field>
-
-      <Field label="Registered Address" required>
-        <input
-          type="text"
-          value={data.registeredAddress}
-          onChange={e => set('registeredAddress', e.target.value)}
-          placeholder="Full registered address as per BIR records"
-          className={inputCls}
-        />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Zip Code">
-          <input
-            type="text"
-            value={data.zipCode}
-            onChange={e => set('zipCode', e.target.value)}
-            placeholder="e.g. 6000"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Contact Number">
-          <input
-            type="text"
-            value={data.birContactNumber}
-            onChange={e => set('birContactNumber', e.target.value)}
-            placeholder="Business contact number"
-            className={inputCls}
-          />
-        </Field>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 3: Owner / Individual Information ────────────────────────────────────
-
-function Step3({ data, set }: StepProps): React.ReactElement {
   return (
     <div className="space-y-6">
 
@@ -450,9 +369,9 @@ function Step3({ data, set }: StepProps): React.ReactElement {
   );
 }
 
-// ─── Step 4: Business Operations ──────────────────────────────────────────────
+// ─── Step 3: Business Operations ──────────────────────────────────────────────
 
-function Step4({ data, set }: StepProps): React.ReactElement {
+function Step3({ data, set }: StepProps): React.ReactElement {
   return (
     <div className="space-y-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">Business Operations</p>
@@ -629,7 +548,7 @@ export function CompleteDetailsForm({ isOpen, onClose, onCompleted }: CompleteDe
                 <div>
                   <h2 className="text-base font-extrabold text-foreground">Complete Your Profile</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Step {step} of 4 · Progress auto-saved
+                    Step {step} of 3 · Progress auto-saved
                   </p>
                 </div>
                 <button
@@ -682,7 +601,6 @@ export function CompleteDetailsForm({ isOpen, onClose, onCompleted }: CompleteDe
               {step === 1 && <Step1 data={formData} set={set} />}
               {step === 2 && <Step2 data={formData} set={set} />}
               {step === 3 && <Step3 data={formData} set={set} />}
-              {step === 4 && <Step4 data={formData} set={set} />}
             </div>
 
             {/* ── Footer ──────────────────────────────────────────── */}
@@ -695,10 +613,10 @@ export function CompleteDetailsForm({ isOpen, onClose, onCompleted }: CompleteDe
                 Back
               </button>
               <button
-                onClick={step < 4 ? () => setStep(s => s + 1) : handleSubmit}
+                onClick={step < 3 ? () => setStep(s => s + 1) : handleSubmit}
                 className="rounded-xl bg-blue-600 px-6 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.97]"
               >
-                {step === 4 ? 'Submit' : 'Next'}
+                {step === 3 ? 'Submit' : 'Next'}
               </button>
             </div>
           </>
