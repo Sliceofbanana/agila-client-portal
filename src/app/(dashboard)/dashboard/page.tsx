@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CompleteDetailsBanner } from './components/CompleteDetailsBanner';
 
 /* --- Data -------------------------------------------------------- */
 
@@ -160,6 +161,9 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto pb-16 space-y-8">
+
+      {/* -- Incomplete details banner --------------------------- */}
+      <CompleteDetailsBanner />
 
       {/* -- Hero ----------------------------------------------- */}
       <section className="relative overflow-hidden rounded-2xl bg-linear-to-br from-blue-600 via-blue-700 to-blue-900 text-white p-8 shadow-xl">
