@@ -4,7 +4,7 @@
 import { useState, useRef } from 'react';
 import {
   LayoutDashboard, FolderOpen, CalendarDays, FileText, CheckCircle2,
-  AlertCircle, Clock, XCircle, ArrowLeft, Eye,
+  AlertCircle, Clock, XCircle, ArrowLeft, ChevronRight,
   Circle, FileCheck, Activity, TrendingUp, AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
@@ -377,69 +377,67 @@ export default function ServicesModule(): React.ReactNode {
 
       {/* ── MY SERVICES TAB — LIST ───────────────────────────────── */}
       {activeTab === 'services' && selectedService === null && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {MOCK_SERVICES.map(svc => {
-            const st  = SERVICE_STATUS[svc.status];
-            const pct = stepsProgress(svc.filingSteps);
+            const st      = SERVICE_STATUS[svc.status];
             const missing = svc.requirements.filter(r => r.status === 'missing').length;
+            const currentStep = svc.filingSteps.find(s => s.current);
+            const completedSteps = svc.filingSteps.filter(s => s.completed).length;
+            const totalSteps = svc.filingSteps.length;
 
             return (
-              <div
+              <button
                 key={svc.id}
-                className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden"
+                onClick={() => setSelectedId(svc.id)}
+                className="w-full text-left rounded-xl border border-border bg-card hover:border-foreground/20 hover:bg-muted/30 transition-all duration-150 overflow-hidden group"
               >
-                {/* Left accent bar */}
-                <div className="flex">
-                  <div className={`w-1 shrink-0 ${st.barColor}`} />
-                  <div className="flex-1 p-5 space-y-4">
-                    {/* Header row */}
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${st.bg} ${st.border} ${st.textColor}`}>
-                            {st.label}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-medium">{svc.category}</span>
-                        </div>
-                        <p className="text-base font-bold text-foreground leading-snug">{svc.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Team: {svc.team} &nbsp;·&nbsp; Due: {svc.dueDate} &nbsp;·&nbsp; Assigned to: {svc.assignedTo}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedId(svc.id)}
-                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-border bg-muted px-4 py-2 text-xs font-semibold text-foreground hover:bg-border transition-colors"
-                      >
-                        <Eye size={13} /> View Details
-                      </button>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-[11px] font-semibold text-muted-foreground">
-                        <span>Filing Progress</span>
-                        <span>{pct}%</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${st.barColor} transition-all duration-700`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Footer row */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span>{reqProgress(svc.requirements)}</span>
+                <div className="p-4 flex items-start gap-4">
+                  {/* Left: info */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {/* Title row */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${st.bg} ${st.border} ${st.textColor}`}>
+                        {st.label}
+                      </span>
+                      <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">{svc.category}</span>
                       {missing > 0 && (
-                        <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
-                          <AlertCircle size={12} /> {missing} missing
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                          <AlertCircle size={10} /> {missing} doc{missing > 1 ? 's' : ''} needed
                         </span>
                       )}
                     </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-foreground leading-snug">{svc.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Due <span className="font-medium text-foreground">{svc.dueDate}</span>
+                        <span className="mx-1.5 text-border">·</span>
+                        {svc.assignedTo}
+                      </p>
+                    </div>
+
+                    {/* Mini step tracker */}
+                    <div className="flex items-center gap-1">
+                      {svc.filingSteps.map((step, i) => (
+                        <div key={step.id} className="flex items-center gap-1 flex-1 min-w-0">
+                          <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                            step.completed ? 'bg-emerald-500' : step.current ? 'bg-blue-500' : 'bg-muted-foreground/25'
+                          }`} />
+                          {i < svc.filingSteps.length - 1 && (
+                            <div className={`h-px flex-1 ${step.completed ? 'bg-emerald-300' : 'bg-muted-foreground/20'}`} />
+                          )}
+                        </div>
+                      ))}
+                      <span className="ml-2 text-[10px] text-muted-foreground shrink-0">
+                        {currentStep ? currentStep.label : `${completedSteps}/${totalSteps} steps`}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Right: chevron */}
+                  <ChevronRight size={16} className="text-muted-foreground/50 group-hover:text-foreground shrink-0 mt-0.5 transition-colors" />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -447,29 +445,29 @@ export default function ServicesModule(): React.ReactNode {
 
       {/* ── MY SERVICES TAB — DETAIL ─────────────────────────────── */}
       {activeTab === 'services' && selectedService !== null && (
-        <div className="space-y-6">
+        <div className="space-y-5">
 
           {/* Back + title */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <button
               onClick={() => setSelectedId(null)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 mt-0.5 flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft size={16} /> Back to Services
+              <ArrowLeft size={14} /> Back
             </button>
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${SERVICE_STATUS[selectedService.status].bg} ${SERVICE_STATUS[selectedService.status].border} ${SERVICE_STATUS[selectedService.status].textColor}`}>
-                {SERVICE_STATUS[selectedService.status].label}
-              </span>
-              <span className="text-xs text-muted-foreground">{selectedService.category}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${SERVICE_STATUS[selectedService.status].bg} ${SERVICE_STATUS[selectedService.status].border} ${SERVICE_STATUS[selectedService.status].textColor}`}>
+                  {SERVICE_STATUS[selectedService.status].label}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{selectedService.category}</span>
+              </div>
+              <h2 className="text-base font-bold text-foreground leading-snug">{selectedService.name}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Due <span className="font-medium text-foreground">{selectedService.dueDate}</span>
+                <span className="mx-1.5 text-border">·</span>{selectedService.assignedTo}
+              </p>
             </div>
-            <h2 className="text-xl font-extrabold text-foreground">{selectedService.name}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Team: {selectedService.team} · Due: {selectedService.dueDate} · Assigned to: {selectedService.assignedTo}
-            </p>
           </div>
 
           {/* ── Filing Tracker ─────────────────────────────────── */}
@@ -577,22 +575,19 @@ export default function ServicesModule(): React.ReactNode {
                 const rs = REQ_STATUS[req.status];
                 const { Icon: ReqIcon } = rs;
                 return (
-                  <div key={req.id} className="px-5 py-4 space-y-2">
-                    <div className="flex items-start gap-3">
-                      <FileText size={15} className="text-muted-foreground mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground leading-snug">{req.name}</p>
-                        <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${rs.bg} ${rs.border} ${rs.textColor}`}>
-                          <ReqIcon size={10} /> {rs.label}
+                  <div key={req.id} className="px-5 py-3 flex items-start gap-3">
+                    <ReqIcon size={14} className={`mt-0.5 shrink-0 ${rs.textColor}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <p className="text-sm text-foreground leading-snug">{req.name}</p>
+                        <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${rs.bg} ${rs.border} ${rs.textColor}`}>
+                          {rs.label}
                         </span>
                       </div>
+                      {req.notes && (
+                        <p className="mt-1 text-xs text-muted-foreground">{req.notes}</p>
+                      )}
                     </div>
-                    {req.notes && (
-                      <div className="ml-6 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                        <AlertCircle size={12} className="mt-0.5 shrink-0 text-amber-500" />
-                        <span>{req.notes}</span>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -608,84 +603,62 @@ export default function ServicesModule(): React.ReactNode {
       )}
 
       {/* ── TAX TIMELINE TAB ─────────────────────────────────────── */}
-      {activeTab === 'timeline' && (
-        <div className="space-y-6">
-
-          {/* Upcoming */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-              <Clock size={15} className="text-blue-500" />
-              <p className="text-sm font-semibold text-foreground">Upcoming Deadlines</p>
-            </div>
-            <div className="divide-y divide-border">
-              {MOCK_TIMELINE.filter(e => e.status === 'upcoming').map(event => {
-                const ts = TIMELINE_STATUS[event.status];
-                return (
-                  <div key={event.id} className="flex items-center gap-4 px-5 py-4">
-                    <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${ts.dot}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{event.title}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted-foreground">{event.date}</p>
-                        {event.form && (
-                          <span className="text-[10px] font-bold bg-muted border border-border text-muted-foreground px-1.5 py-0.5 rounded">
-                            {event.form}
-                          </span>
-                        )}
+      {activeTab === 'timeline' && (() => {
+        const sorted = [...MOCK_TIMELINE].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        const months = Array.from(new Set(sorted.map(e => e.month)));
+        return (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">Filing Schedule</p>
+                <p className="text-xs text-muted-foreground mt-0.5">All deadlines managed by ATMS on your behalf.</p>
+              </div>
+              <div>
+                {months.map((month, mi) => {
+                  const events = sorted.filter(e => e.month === month);
+                  return (
+                    <div key={month}>
+                      <div className={`px-5 py-2 bg-muted/50 ${mi > 0 ? 'border-t border-border' : ''}`}>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{month}</p>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {events.map(event => {
+                          const ts = TIMELINE_STATUS[event.status];
+                          return (
+                            <div key={event.id} className="flex items-center gap-4 px-5 py-3.5">
+                              <div className={`h-2 w-2 rounded-full shrink-0 ${ts.dot}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground leading-snug">{event.title}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                  <p className="text-xs text-muted-foreground">{event.date}</p>
+                                  {event.form && (
+                                    <span className="text-[10px] font-bold bg-muted border border-border text-muted-foreground px-1.5 py-0.5 rounded">
+                                      {event.form}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground">{event.category}</span>
+                                </div>
+                              </div>
+                              <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${ts.bg} ${ts.border} ${ts.textColor}`}>
+                                {event.status === 'in_progress' ? 'In Progress' : event.status}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                    <div className="shrink-0 flex flex-col items-end gap-1">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${ts.bg} ${ts.border} ${ts.textColor}`}>
-                        {event.status}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">{event.category}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
+            <p className="text-center text-[11px] text-muted-foreground">
+              All filings are handled by ATMS on your behalf. This timeline is view-only.
+            </p>
           </div>
-
-          {/* Completed */}
-          <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-emerald-500" />
-              <p className="text-sm font-semibold text-foreground">Completed Filings</p>
-            </div>
-            <div className="divide-y divide-border">
-              {MOCK_TIMELINE.filter(e => e.status === 'completed').map(event => {
-                const ts = TIMELINE_STATUS[event.status];
-                return (
-                  <div key={event.id} className="flex items-center gap-4 px-5 py-4">
-                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{event.title}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted-foreground">{event.date}</p>
-                        {event.form && (
-                          <span className="text-[10px] font-bold bg-muted border border-border text-muted-foreground px-1.5 py-0.5 rounded">
-                            {event.form}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="shrink-0 flex flex-col items-end gap-1">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${ts.bg} ${ts.border} ${ts.textColor}`}>
-                        Completed
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">{event.category}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <p className="text-center text-[11px] text-muted-foreground">
-            All filings are handled by ATMS on your behalf. This timeline is view-only.
-          </p>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

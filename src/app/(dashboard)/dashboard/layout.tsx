@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -29,6 +29,105 @@ const PORTAL_ITEMS = [
   { href: '/portal/hr', label: 'Agila HR Portal', icon: UserCheck },
 ];
 
+const DASH_LABELS: Record<string, string> = {
+  dashboard:          'Dashboard',
+  timesheet:          'Timesheet',
+  payslips:           'Payslips',
+  'hr-apps':          'HR Applications',
+  services:           'Services & Compliance',
+  profile:            'Profile',
+  settings:           'Settings',
+  notifications:      'Notifications',
+  admin:              'Admin',
+  clients:            'Clients',
+  hr:                 'HR',
+  'user-management':  'User Management',
+};
+
+function resolveSegment(seg: string): string {
+  return DASH_LABELS[seg] ?? seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function DashboardBreadcrumb(): React.ReactNode {
+  const pathname = usePathname();
+  const router   = useRouter();
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments.length <= 1) return null;
+
+  const crumbs = segments.map((seg, i) => ({
+    label:  resolveSegment(seg),
+    path:   '/' + segments.slice(0, i + 1).join('/'),
+    isLast: i === segments.length - 1,
+  }));
+
+  return (
+    <nav className="hidden sm:flex items-center gap-1 text-sm" aria-label="Breadcrumb">
+      {crumbs.map((crumb, i) => (
+        <React.Fragment key={crumb.path}>
+          {i > 0 && <ChevronRight size={13} className="text-muted-foreground/40 shrink-0" />}
+          {crumb.isLast ? (
+            <span className="font-semibold text-foreground truncate max-w-40">{crumb.label}</span>
+          ) : (
+            <button
+              onClick={() => router.push(crumb.path)}
+              className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-40"
+            >
+              {crumb.label}
+            </button>
+          )}
+        </React.Fragment>
+      ))}
+    </nav>
+  );
+}
+
+function ProfileDropdown(): React.ReactNode {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- Subscribing to DOM event for click-outside detection */
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button
+        variant="ghost"
+        onClick={() => setOpen(o => !o)}
+        className="rounded-xl"
+        title="Account"
+      >
+        <User size={18} />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl border border-border bg-card shadow-lg z-50 overflow-hidden">
+          <button
+            onClick={() => { setOpen(false); router.push('/dashboard/profile'); }}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+          >
+            <User size={14} /> Profile
+          </button>
+          <div className="h-px bg-border" />
+          <button
+            onClick={async () => { setOpen(false); await authClient.signOut(); router.push('/sign-in'); }}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >
+            <LogOut size={14} /> Sign Out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen]       = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -49,7 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top bar */}
           <header className="bg-header border-b border-header-border px-6 py-4 flex items-center justify-between shrink-0 z-30 shadow-sm">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 className="lg:hidden"
@@ -57,6 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <Menu size={20} />
               </Button>
+              <DashboardBreadcrumb />
             </div>
 
             <div className="flex items-center gap-2">
@@ -69,12 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
               </Button>
               <NotificationDropdown />
-              <Button
-                variant="ghost"
-                onClick={() => router.push('/dashboard/profile')}
-              >
-                <User size={18} />
-              </Button>
+              <ProfileDropdown />
             </div>
           </header>
 
@@ -237,17 +332,7 @@ function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: SidebarProps) 
             {isExpanded && <span className="text-sm font-medium">Settings</span>}
           </button>
 
-          <button
-            onClick={async () => {
-              await authClient.signOut();
-              router.push('/sign-in');
-            }}
-            className={`flex items-center ${isExpanded ? 'gap-3 px-3' : 'justify-center'} p-3 w-full rounded-xl text-red-400 hover:bg-red-900/20 transition`}
-            title={!isExpanded ? 'Sign Out' : undefined}
-          >
-            <LogOut size={20} className="shrink-0" />
-            {isExpanded && <span className="text-sm font-medium">Sign Out</span>}
-          </button>
+
         </div>
       </aside>
     </>

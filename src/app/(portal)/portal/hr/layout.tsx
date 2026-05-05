@@ -6,7 +6,8 @@ import { HRSidebar } from '@/components/hr/HRSidebar';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { Button } from '@/components/UI/button';
 import { RoleProvider } from '@/lib/role-context';
-import { Menu, User, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Menu, User, ArrowLeft, ChevronRight, LogOut } from 'lucide-react';
+import { authClient } from '@/lib/auth-client';
 
 const SEGMENT_LABELS: Record<string, string> = {
   hr: 'HR Portal',
@@ -82,7 +83,19 @@ function HRBreadcrumb() {
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dropOpen, setDropOpen] = useState(false);
+  const dropRef = React.useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  /* eslint-disable react-hooks/set-state-in-effect -- Subscribing to DOM event for click-outside detection */
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <RoleProvider>
@@ -104,12 +117,28 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
 
             <div className="flex items-center gap-2">
               <NotificationDropdown />
-              <Button
-                variant="ghost"
-                onClick={() => router.push('/dashboard/profile')}
-              >
-                <User size={18} />
-              </Button>
+              <div className="relative" ref={dropRef}>
+                <Button variant="ghost" onClick={() => setDropOpen(o => !o)} title="Account">
+                  <User size={18} />
+                </Button>
+                {dropOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl border border-slate-200 bg-white shadow-lg z-50 overflow-hidden">
+                    <button
+                      onClick={() => { setDropOpen(false); router.push('/dashboard/profile'); }}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <User size={14} /> Profile
+                    </button>
+                    <div className="h-px bg-slate-100" />
+                    <button
+                      onClick={async () => { setDropOpen(false); await authClient.signOut(); router.push('/sign-in'); }}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut size={14} /> Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 

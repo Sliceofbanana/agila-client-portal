@@ -342,9 +342,6 @@ export default function DashboardPage() {
           className="group w-full overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
         >
           <div className="flex flex-col sm:flex-row">
-            {/* Accent bar */}
-            <div className="h-1.5 w-full rounded-t-2xl bg-linear-to-r from-teal-500 to-teal-700 sm:h-auto sm:w-1.5 sm:rounded-l-2xl sm:rounded-tr-none" />
-
             <div className="flex flex-1 flex-col gap-5 p-6 sm:flex-row sm:items-center">
               {/* Icon */}
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg transition-all group-hover:scale-105 group-hover:rotate-3">
