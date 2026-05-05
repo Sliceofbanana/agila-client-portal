@@ -1,28 +1,34 @@
-# Agila Tax Management System — Copilot Instructions
+# ATMS Client Portal — Copilot Instructions
 
 ## Project Overview
 
-**Agila Tax Management System (ATMS)** is a Philippine-based tax management and ERP platform built for a tax consulting firm. It manages the full lifecycle of client tax compliance, sales operations, accounting, HR, and internal task coordination.
+**ATMS Client Portal** is the client-facing web application for the Agila Tax Management System (ATMS). This is a **separate repository** from the main ATMS internal platform. Business owner clients log in here using their `ClientUser` account to manage their own HR operations, monitor the status of their tax compliance filings, communicate with their assigned Account Officer, and track liaison field tasks.
+
+> The main ATMS (internal ERP used by Agila staff) is a different project. This repo is exclusively for the client-side experience.
 
 ### Business Context
 
-- Philippine tax compliance (BIR, SEC, DTI, Mayor's Permit, SSS, PhilHealth, PAGIBIG)
-- Service plans for VAT and Non-VAT entities (Starter → VIP tiers)
-- Client types: Professional clients and Sole Proprietorships
-- 11-stage sales lead pipeline (New → Turnover + Lost)
+- Clients are Philippine business owners (Professional clients and Sole Proprietorships) served by Agila
+- Clients subscribe to service plans (VAT and Non-VAT, Starter → VIP tiers) managed in the main ATMS
+- This portal lets clients monitor their BIR, SEC, DTI, Mayor's Permit, SSS, PhilHealth, and PAGIBIG compliance tasks
+- Clients manage their own employees: timesheets, payroll, leave, and government deductions
+- Clients communicate with and receive updates from their assigned Account Officer
+- Clients track field liaison tasks (e.g., document submissions, government visits) performed on their behalf
 - Operates primarily in Cebu City and surrounding areas
 
-### Enterprise Modules
+### Client Portal Modules
 
-| Module           | Route                     | Purpose                                              |
-| ---------------- | ------------------------- | ---------------------------------------------------- |
-| Sales (ASP)      | `/portal/sales`           | Leads, service plans, client list, commissions        |
-| Accounting       | `/portal/accounting`      | Payments, invoices, billing, financial reports         |
-| Compliance       | `/portal/compliance`      | Task board, client compliances, open cases, reports    |
-| Liaison          | `/portal/liaison`         | Field task board, scheduling calendar                  |
-| HR               | `/portal/hr`              | Employees, leave, attendance, payroll, gov compliance  |
-| Account Officer  | `/portal/account-officer` | Client task management, discussions, notifications     |
-| Employee Dashboard | `/dashboard`            | Timesheet, payslips, HR apps, enterprise portal access |
+| Module          | Route                     | Purpose                                                        |
+| --------------- | ------------------------- | -------------------------------------------------------------- |
+| Dashboard       | `/dashboard`              | Home overview, notifications, quick links, service plan status  |
+| HR              | `/dashboard/hr`           | Manage client's own employees, leave, attendance, gov compliance |
+| HR Apps         | `/dashboard/hr-apps`      | Payslips, payroll computation, work schedule                    |
+| Payslips        | `/dashboard/payslips`     | View and download employee payslips                            |
+| Compliance      | `/portal/hr`              | Monitor tax compliance status and government filing tasks       |
+| Liaison         | `/portal/liaison`         | Track field tasks performed by Agila on the client's behalf     |
+| Account Officer | `/portal/account-officer` | Discussions, task updates, and notifications from assigned AO   |
+| Services        | `/dashboard/services`     | View active service plan and its inclusions                    |
+| Profile         | `/dashboard/profile`      | Client user account settings and business info                 |
 
 ---
 
@@ -77,19 +83,17 @@ src/
     layout.tsx            # Root layout (ThemeProvider wraps all pages)
     globals.css           # Tailwind + custom CSS variables (light/dark)
     page.tsx              # Marketing landing page
-    (auth)/               # Auth route group (login, register, reset-password, etc.)
-    (dashboard)/          # Employee dashboard route group
-    (portal)/             # Enterprise portal route group (all modules)
-    app/api/auth/         # BetterAuth API catch-all route
+    (auth)/               # Auth route group (sign-in, register, reset-password, select-client)
+    (dashboard)/          # Client dashboard route group (HR, payslips, services, profile, settings)
+    (portal)/             # Client portal route group (compliance, liaison, account-officer)
+    api/auth/             # BetterAuth API catch-all route
   components/
     UI/                   # Shared reusable components (Modal, Card, Badge, Button, Input)
-    sales/                # Sales/ASP module components
-    accounting/           # Accounting module components
+    hr/                   # HR module components (employees, leave, attendance, payroll)
     compliance/           # Compliance module components
     liaison/              # Liaison module components
-    hr/                   # HR module components
     account-officer/      # Account Officer module components
-    dashboard/            # Employee dashboard components
+    dashboard/            # Client dashboard components
     notifications/        # Notification components
   context/
     AuthContext.tsx        # Auth state + attendance tracking
@@ -268,6 +272,9 @@ useEffect(() => {
 - API route: `src/app/api/auth/[...all]/route.ts` — catch-all handler
 - Auth models: `User`, `Session`, `Account`, `Verification` in `prisma/models/users.prisma`
 - Roles enum: `SUPER_ADMIN`, `ADMIN`, `EMPLOYEE`, `CLIENT`
+- **Primary role in this portal is `CLIENT`** — logged-in users are business owner clients linked to a `ClientUser` record
+- `SUPER_ADMIN` / `ADMIN` roles may be used for admin-override access but are not the primary audience of this portal
+- `EMPLOYEE` role does not apply here — this is not the internal staff application
 
 ### BetterAuth Conventions
 
@@ -398,9 +405,11 @@ useEffect(() => {
 ## Role-Based Access Control
 
 - Roles defined in Prisma enum: `SUPER_ADMIN`, `ADMIN`, `EMPLOYEE`, `CLIENT`
-- App-level permissions: `EmployeeAppAccess` model with `canRead`, `canWrite`, `canEdit`, `canDelete` per app module
-- Client context roles: `Employee`, `HR`, `Admin` (in `src/lib/role-context.tsx`)
-- Permissions map in `src/lib/constants.ts` (`ROLE_PERMISSIONS`)
+- **In this portal, access is scoped to the authenticated `ClientUser`** — the logged-in client can only see data belonging to their own business/client record
+- `EmployeeAppAccess` (used in the main ATMS for staff permissions) does **not** apply here
+- Client-side context roles (`Employee`, `HR`, `Admin` in `src/lib/role-context.tsx`) may be used to differentiate between sub-roles within a client account (e.g., a client's HR manager vs. the business owner)
+- Always enforce that API routes return only records scoped to the requesting client's `clientId` — never expose data from other clients
+- Permissions map in `src/lib/constants.ts` (`ROLE_PERMISSIONS`) for any applicable role-gating
 - Enforce access checks both client-side (conditional rendering) and server-side (API route guards)
 
 ---
@@ -454,7 +463,9 @@ src/app/(dashboard)/dashboard/settings/user-management/
 
 ## Portal Apps (AppPortal Enum)
 
-All portal apps are defined in `prisma/models/app-access.prisma` and seeded in `prisma/seed.ts`:
+> **Note:** The `AppPortal` enum and `EmployeeAppAccess` model are defined in the **main ATMS** (`prisma/models/app-access.prisma`) and are used for staff permission management in the internal platform. They are **not used in this client portal** for access control.
+
+For reference, the full enum from the main ATMS is:
 
 | Portal Key         | Label                    |
 | ------------------ | ------------------------ |
@@ -466,7 +477,7 @@ All portal apps are defined in `prisma/models/app-access.prisma` and seeded in `
 | `HR`               | HR Portal                |
 | `TASK_MANAGEMENT`  | Task Management Portal   |
 
-When adding portal-related UI (checkboxes, labels), always include **all** portals from this list.
+Do **not** add portal-selector UI or `EmployeeAppAccess` checks in this client portal codebase.
 
 ---
 
