@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { authClient } from '@/lib/auth-client';
 import { useToast } from '@/context/ToastContext';
 
 // ── Zod Schema ───────────────────────────────────────────────────────
@@ -55,36 +54,28 @@ export default function SignInForm(): React.ReactNode {
       return;
     }
 
-    // ── Sign in via BetterAuth ──
+    // ── Sign in via ATMS proxy ──
     setSubmitting(true);
     setErrors({});
 
-    const INTERNAL_ROLES = ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE'] as const;
-
     try {
-      const { data: signInData, error: authError } = await authClient.signIn.email({
-        email: result.data.email,
-        password: result.data.password,
+      const res = await fetch('/api/auth/client/sign-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: result.data.email, password: result.data.password }),
+        credentials: 'include',
       });
 
-      if (authError) {
-        setSubmitting(false);
-        showError('Sign-in failed', authError.message ?? 'Invalid email or password.');
-        return;
-      }
+      const json = await res.json() as { user?: { id: string; name: string; email: string }; error?: string };
 
-      // Ensure only internal users (SUPER_ADMIN, ADMIN, EMPLOYEE) can access this portal.
-      // ClientUser accounts authenticate through a separate portal.
-      const role = (signInData?.user as { role?: string } | undefined)?.role;
-      if (!role || !(INTERNAL_ROLES as readonly string[]).includes(role)) {
-        await authClient.signOut();
+      if (!res.ok) {
         setSubmitting(false);
-        showError('Access denied', 'This portal is for internal staff only.');
+        showError('Sign-in failed', json.error ?? 'Invalid email or password.');
         return;
       }
 
       success('Welcome back!', 'You have signed in successfully.');
-      router.push('/dashboard');
+      router.push(`/select-client?userId=${json.user!.id}`);
     } catch {
       setSubmitting(false);
       showError('Sign-in failed', 'An unexpected error occurred. Please try again.');
