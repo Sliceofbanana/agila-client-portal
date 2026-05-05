@@ -59,7 +59,7 @@ export default function SignInForm(): React.ReactNode {
     setErrors({});
 
     try {
-      const res = await fetch('/api/auth/client/sign-in', {
+      const res = await fetch('/api/client-sign-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: result.data.email, password: result.data.password }),

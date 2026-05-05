@@ -34,7 +34,7 @@ export default function ClientSelector(): React.ReactNode {
 
     async function fetchClients() {
       try {
-        const res = await fetch(`/api/auth/client/clients?clientUserId=${encodeURIComponent(userId!)}`, {
+        const res = await fetch(`/api/client-clients?clientUserId=${encodeURIComponent(userId!)}`, {
           credentials: 'include',
         });
         const json = await res.json() as { data?: AssignedClient[]; error?: string };
@@ -75,7 +75,7 @@ export default function ClientSelector(): React.ReactNode {
   async function selectClient(client: AssignedClient) {
     setSelecting(client.id);
     try {
-      const res = await fetch('/api/auth/client/select', {
+      const res = await fetch('/api/client-select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

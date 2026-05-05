@@ -1,4 +1,4 @@
-// src/app/api/auth/client/sign-in/route.ts
+// src/app/api/client-sign-in/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -21,32 +21,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const atmsBaseUrl = process.env.ATMS_BASE_URL;
-  if (!atmsBaseUrl) {
+  const atmsApiKey = process.env.ATMS_API_KEY;
+  if (!atmsBaseUrl || !atmsApiKey) {
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
 
   try {
-    const atmsRes = await fetch(`${atmsBaseUrl}/api/client-auth/sign-in/email`, {
+    // Step 1 — Login to ATMS
+    const loginRes = await fetch(`${atmsBaseUrl}/api/client-auth/sign-in/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(parsed.data),
       // Note: credentials: "include" is browser-only — not valid in Node.js fetch.
-      // The ATMS session cookie is captured via atmsRes.headers.get('set-cookie') below.
+      // The ATMS session cookie is captured via loginRes.headers.get('set-cookie') below.
     });
 
-    const data = await atmsRes.json() as { user?: { id: string; name: string; email: string }; error?: string };
+    const loginData = await loginRes.json() as { user?: { id: string; name: string; email: string }; error?: string };
 
-    if (!atmsRes.ok) {
+    if (!loginRes.ok) {
       return NextResponse.json(
-        { error: data.error ?? 'Invalid email or password.' },
-        { status: atmsRes.status }
+        { error: loginData.error ?? 'Invalid email or password.' },
+        { status: loginRes.status }
       );
     }
 
-    const response = NextResponse.json({ user: data.user });
+    const user = loginData.user!;
+
+    // Step 2 — Fetch assigned clients for this user
+    const clientsRes = await fetch(
+      `${atmsBaseUrl}/api/v1/clients?clientUserId=${user.id}`,
+      {
+        headers: { Authorization: `Bearer ${atmsApiKey}` },
+      }
+    );
+
+    if (!clientsRes.ok) {
+      return NextResponse.json({ error: 'Failed to load client accounts.' }, { status: 502 });
+    }
+
+    const clientsData = await clientsRes.json() as { data?: unknown[] };
+
+    const response = NextResponse.json({ user, clients: clientsData.data ?? clientsData });
 
     // Forward the ATMS session cookie to the browser so session checks work
-    const setCookie = atmsRes.headers.get('set-cookie');
+    const setCookie = loginRes.headers.get('set-cookie');
     if (setCookie) {
       response.headers.set('set-cookie', setCookie);
     }

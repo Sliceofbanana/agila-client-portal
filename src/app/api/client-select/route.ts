@@ -1,9 +1,9 @@
-// src/app/api/auth/client/select/route.ts
+// src/app/api/client-select/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const selectSchema = z.object({
-  clientId: z.string().min(1),
+  clientId: z.union([z.string(), z.number()]),
   businessName: z.string().min(1),
   portalName: z.string().optional(),
   companyCode: z.string().optional(),
@@ -25,7 +25,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const response = NextResponse.json({ ok: true });
 
-  response.cookies.set('atms_selected_client', JSON.stringify(parsed.data), {
+  // Store selected client in a secure, HttpOnly cookie so server layouts can read it
+  response.cookies.set('selected-client', JSON.stringify(parsed.data), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
