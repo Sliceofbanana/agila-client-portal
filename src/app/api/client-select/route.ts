@@ -7,6 +7,10 @@ const selectSchema = z.object({
   businessName: z.string().min(1),
   portalName: z.string().optional(),
   companyCode: z.string().optional(),
+  clientNo: z.string().optional(),
+  businessEntity: z.string().optional(),
+  branchType: z.string().optional(),
+  logoUrl: z.string().nullable().optional(),
   role: z.string().optional(),
 });
 

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { CompleteDetailsForm } from './CompleteDetailsForm';
+import { CompleteDetailsForm, type SessionInfo } from './CompleteDetailsForm';
 
 const COMPLETED_KEY = 'client_details_completed';
 
@@ -11,11 +11,37 @@ export function CompleteDetailsBanner(): React.ReactNode {
   const [completed, setCompleted] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo>({
+    clientId: null,
+    companyCode: null,
+    clientNo: null,
+    businessEntity: null,
+    branchType: null,
+  });
 
-  /* eslint-disable react-hooks/set-state-in-effect -- Hydration-safe: must read localStorage after mount */
+  /* eslint-disable react-hooks/set-state-in-effect -- Hydration-safe: must read localStorage and fetch session after mount */
   useEffect(() => {
     setCompleted(localStorage.getItem(COMPLETED_KEY) === 'true');
     setMounted(true);
+
+    fetch('/api/portal-session', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: {
+        clientId?: string | number | null;
+        companyCode?: string | null;
+        clientNo?: string | null;
+        businessEntity?: string | null;
+        branchType?: string | null;
+      }) => {
+        setSessionInfo({
+          clientId: data.clientId ?? null,
+          companyCode: data.companyCode ?? null,
+          clientNo: data.clientNo ?? null,
+          businessEntity: data.businessEntity ?? null,
+          branchType: data.branchType ?? null,
+        });
+      })
+      .catch(() => {});
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -50,7 +76,9 @@ export function CompleteDetailsBanner(): React.ReactNode {
           setCompleted(true);
           setFormOpen(false);
         }}
+        session={sessionInfo}
       />
     </>
   );
 }
+

@@ -11,6 +11,10 @@ interface AssignedClient {
   businessName: string;
   portalName?: string;
   companyCode?: string;
+  clientNo?: string;
+  businessEntity?: string;
+  branchType?: string;
+  logoUrl?: string | null;
   role?: string;
   active?: boolean;
 }
@@ -83,6 +87,10 @@ export default function ClientSelector(): React.ReactNode {
           businessName: client.businessName,
           portalName: client.portalName,
           companyCode: client.companyCode,
+          clientNo: client.clientNo,
+          businessEntity: client.businessEntity,
+          branchType: client.branchType,
+          logoUrl: client.logoUrl,
           role: client.role,
         }),
         credentials: 'include',

@@ -21,8 +21,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const atmsBaseUrl = process.env.ATMS_BASE_URL;
-  const atmsApiKey = process.env.ATMS_API_KEY;
-  if (!atmsBaseUrl || !atmsApiKey) {
+  if (!atmsBaseUrl) {
     return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
   }
 
@@ -30,10 +29,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Step 1 — Login to ATMS
     const loginRes = await fetch(`${atmsBaseUrl}/api/client-auth/sign-in/email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': atmsBaseUrl,
+      },
       body: JSON.stringify(parsed.data),
-      // Note: credentials: "include" is browser-only — not valid in Node.js fetch.
-      // The ATMS session cookie is captured via loginRes.headers.get('set-cookie') below.
     });
 
     const loginData = await loginRes.json() as { user?: { id: string; name: string; email: string }; error?: string };
@@ -47,27 +47,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const user = loginData.user!;
 
-    // Step 2 — Fetch assigned clients for this user
-    const clientsRes = await fetch(
-      `${atmsBaseUrl}/api/v1/clients?clientUserId=${user.id}`,
-      {
-        headers: { Authorization: `Bearer ${atmsApiKey}` },
-      }
-    );
-
-    if (!clientsRes.ok) {
-      return NextResponse.json({ error: 'Failed to load client accounts.' }, { status: 502 });
-    }
-
-    const clientsData = await clientsRes.json() as { data?: unknown[] };
-
-    const response = NextResponse.json({ user, clients: clientsData.data ?? clientsData });
+    const response = NextResponse.json({ user });
 
     // Forward the ATMS session cookie to the browser so session checks work
     const setCookie = loginRes.headers.get('set-cookie');
     if (setCookie) {
       response.headers.set('set-cookie', setCookie);
     }
+
+    // Store userId in an HttpOnly cookie for use in the sign-out proxy
+    response.cookies.set('session-user-id', user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 8, // 8 hours
+    });
+
+    // Store user name for display in the portal UI
+    response.cookies.set('session-user-name', user.name, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 8, // 8 hours
+    });
 
     return response;
   } catch {

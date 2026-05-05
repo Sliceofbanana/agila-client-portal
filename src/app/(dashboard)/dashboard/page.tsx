@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowRight, Clock, FileText, DollarSign, UserCheck, Calendar,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Building2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CompleteDetailsBanner } from './components/CompleteDetailsBanner';
@@ -138,6 +138,20 @@ export default function DashboardPage() {
   const [now, setNow] = useState(new Date());
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [clientName, setClientName] = useState<string | null>(null);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- Fetching portal session data on mount */
+  useEffect(() => {
+    fetch('/api/portal-session', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { userName: string | null; clientName: string | null }) => {
+        setUserName(data.userName);
+        setClientName(data.clientName);
+      })
+      .catch(() => {});
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -173,11 +187,19 @@ export default function DashboardPage() {
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-medium text-blue-200">
-              <Calendar size={14} /> {dateLabel}
-            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-blue-200">
+                <Calendar size={14} /> {dateLabel}
+              </p>
+              {clientName && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-0.5 text-xs font-semibold text-blue-100">
+                  <Building2 size={11} />
+                  {clientName}
+                </span>
+              )}
+            </div>
             <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Good {getGreeting(now)}, <span className="text-blue-200">User</span>
+              Good {getGreeting(now)}, <span className="text-blue-200">{userName ?? 'there'}</span>
             </h1>
             <p className="mt-1.5 text-sm text-blue-200 font-mono tracking-wide">
               {timeLabel} Agila Client Portal

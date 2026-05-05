@@ -10,11 +10,10 @@ import {
   Sun, Moon
 } from 'lucide-react';
 import { Button } from '@/components/UI/button';
-import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { RoleProvider } from '@/lib/role-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { authClient } from '@/lib/auth-client';
+  
 
 
 const NAV_ITEMS = [
@@ -117,7 +116,7 @@ function ProfileDropdown(): React.ReactNode {
           </button>
           <div className="h-px bg-border" />
           <button
-            onClick={async () => { setOpen(false); await authClient.signOut(); router.push('/sign-in'); }}
+            onClick={async () => { setOpen(false); await fetch('/api/client-sign-out', { method: 'POST', credentials: 'include' }); router.push('/sign-in'); }}
             className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             <LogOut size={14} /> Sign Out
@@ -131,8 +130,18 @@ function ProfileDropdown(): React.ReactNode {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen]       = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [clientName, setClientName] = useState<string | null>(null);
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+
+  /* eslint-disable react-hooks/set-state-in-effect -- Fetching portal session data on mount */
+  useEffect(() => {
+    fetch('/api/portal-session', { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { clientName: string | null }) => { setClientName(data.clientName); })
+      .catch(() => {});
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <RoleProvider>
@@ -143,6 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           isExpanded={sidebarExpanded}
           onClose={() => setSidebarOpen(false)}
           onToggleExpand={() => setSidebarExpanded(prev => !prev)}
+          clientName={clientName}
         />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -168,7 +178,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
               </Button>
-              <NotificationDropdown />
               <ProfileDropdown />
             </div>
           </header>
@@ -190,10 +199,11 @@ interface SidebarProps {
   isExpanded: boolean;
   onClose: () => void;
   onToggleExpand: () => void;
+  clientName: string | null;
 }
 
 
-function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: SidebarProps) {
+function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand, clientName }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [logoHovered, setLogoHovered] = useState(false);
@@ -224,31 +234,41 @@ function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: SidebarProps) 
       >
         {/* Header */}
         <div
-          className={`p-5 flex items-center ${isExpanded ? 'justify-between' : 'justify-center'} shrink-0 border-b border-sidebar-border`}
+          className="p-5 flex flex-col shrink-0 border-b border-sidebar-border"
           onMouseEnter={() => !isExpanded && setLogoHovered(true)}
           onMouseLeave={() => !isExpanded && setLogoHovered(false)}
         >
           {isExpanded ? (
             <>
-              <div className="flex items-center gap-3">
-                <Image src="/images/client_portal_logo.png" alt="ATMS" width={36} height={36} className="shrink-0 rounded-sm" />
-                <div>
-                  <h2 className="text-sm font-extrabold text-white uppercase tracking-tight leading-none">Agila Tax</h2>
-                  <p className="text-[9px] text-blue-400 font-semibold uppercase tracking-wider mt-0.5">Management Services</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Image src="/images/client_portal_logo.png" alt="ATMS" width={36} height={36} className="shrink-0 rounded-sm" />
+                  <div>
+                    <h2 className="text-sm font-extrabold text-white uppercase tracking-tight leading-none">Agila Tax</h2>
+                    <p className="text-[9px] text-blue-400 font-semibold uppercase tracking-wider mt-0.5">Management Services</p>
+                  </div>
                 </div>
+
+                {/* Collapse / close button */}
+                <button
+                  onClick={isOpen ? onClose : onToggleExpand}
+                  className="flex items-center justify-center w-7 h-7 rounded-md border border-sidebar-border text-slate-400 hover:bg-slate-800 hover:text-white transition lg:flex"
+                  title={isOpen ? 'Close' : 'Collapse sidebar'}
+                >
+                  {isOpen ? <X size={16} /> : <ChevronLeft size={16} />}
+                </button>
               </div>
 
-              {/* Collapse / close buttons */}
-              <button
-                onClick={isOpen ? onClose : onToggleExpand}
-                className="flex items-center justify-center w-7 h-7 rounded-md border border-sidebar-border text-slate-400 hover:bg-slate-800 hover:text-white transition lg:flex"
-                title={isOpen ? 'Close' : 'Collapse sidebar'}
-              >
-                {isOpen ? <X size={16} /> : <ChevronLeft size={16} />}
-              </button>
+              {/* Client badge */}
+              {clientName && (
+                <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700 px-3 py-2">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400 shrink-0">Client</span>
+                  <span className="text-xs font-semibold text-white truncate" title={clientName}>{clientName}</span>
+                </div>
+              )}
             </>
           ) : (
-            <div className="relative">
+            <div className="flex justify-center relative">
               <Image src="/images/client_portal_logo.png" alt="ATMS" width={30} height={30} className="rounded-sm" />
               {logoHovered && (
                 <button

@@ -7,7 +7,6 @@ import { NotificationDropdown } from '@/components/notifications/NotificationDro
 import { Button } from '@/components/UI/button';
 import { RoleProvider } from '@/lib/role-context';
 import { Menu, User, ArrowLeft, ChevronRight, LogOut } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
 
 const SEGMENT_LABELS: Record<string, string> = {
   hr: 'HR Portal',
@@ -131,7 +130,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
                     </button>
                     <div className="h-px bg-slate-100" />
                     <button
-                      onClick={async () => { setDropOpen(false); await authClient.signOut(); router.push('/sign-in'); }}
+                      onClick={async () => { setDropOpen(false); await fetch('/api/client-sign-out', { method: 'POST', credentials: 'include' }); router.push('/sign-in'); }}
                       className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut size={14} /> Sign Out

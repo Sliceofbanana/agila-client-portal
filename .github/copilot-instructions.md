@@ -58,7 +58,7 @@ This applies to all feature work, refactors, bug fixes, and schema changes. Triv
 | Styling      | Tailwind CSS v4 + custom theme (see below)     |
 | Database     | PostgreSQL (via `@prisma/adapter-pg`)           |
 | ORM          | Prisma 7 (multi-file schema in `prisma/models/`) |
-| Auth         | BetterAuth with Prisma adapter                  |
+| Auth         | ATMS proxy auth (BetterAuth on ATMS side)        |
 | Validation   | Zod                                            |
 | Charts       | Recharts                                       |
 | Icons        | `lucide-react`                                  |
@@ -86,7 +86,11 @@ src/
     (auth)/               # Auth route group (sign-in, register, reset-password, select-client)
     (dashboard)/          # Client dashboard route group (HR, payslips, services, profile, settings)
     (portal)/             # Client portal route group (compliance, liaison, account-officer)
-    api/auth/             # BetterAuth API catch-all route
+    api/
+      client-sign-in/     # POST — proxy to ATMS /api/client-auth/sign-in/email
+      client-sign-out/    # POST — proxy to ATMS /api/v1/auth/sign-out (clears cookies)
+      client-clients/     # GET  — proxy to ATMS /api/v1/clients?clientUserId=
+      client-select/      # POST — stores selected client in HttpOnly cookie
   components/
     UI/                   # Shared reusable components (Modal, Card, Badge, Button, Input)
     hr/                   # HR module components (employees, leave, attendance, payroll)
@@ -99,17 +103,13 @@ src/
     AuthContext.tsx        # Auth state + attendance tracking
     ThemeContext.tsx       # Light/dark theme toggle (localStorage persistence)
   lib/
-    auth.ts               # BetterAuth server config (Prisma adapter, PostgreSQL)
-    auth-client.ts        # BetterAuth client (createAuthClient + nextCookies)
-    db.ts                 # Prisma client singleton (PrismaPg adapter)
-    prisma.ts             # Prisma client alternate export
+    atms.ts               # ATMS fetch helper — atmsRequest() + getPortalSession()
+    auth-client.ts        # BetterAuth client stub (unused for auth — kept for reference)
     types.ts              # Shared TypeScript interfaces
     constants.ts          # Role permissions, route constants
     role-context.tsx      # Role context (Employee, HR, Admin)
     service-data.ts       # Service plan definitions
     mock-*.ts             # Mock data files (to be replaced with real API calls)
-  generated/
-    prisma/               # Generated Prisma client (do NOT edit)
 ```
 
 ---
@@ -265,24 +265,75 @@ useEffect(() => {
 
 ---
 
-## Authentication (BetterAuth)
+## Authentication (ATMS Proxy)
 
-- Server: `src/lib/auth.ts` — `betterAuth()` with `prismaAdapter` on PostgreSQL
-- Client: `src/lib/auth-client.ts` — `createAuthClient()` with `nextCookies()` plugin
-- API route: `src/app/api/auth/[...all]/route.ts` — catch-all handler
-- Auth models: `User`, `Session`, `Account`, `Verification` in `prisma/models/users.prisma`
-- Roles enum: `SUPER_ADMIN`, `ADMIN`, `EMPLOYEE`, `CLIENT`
-- **Primary role in this portal is `CLIENT`** — logged-in users are business owner clients linked to a `ClientUser` record
-- `SUPER_ADMIN` / `ADMIN` roles may be used for admin-override access but are not the primary audience of this portal
-- `EMPLOYEE` role does not apply here — this is not the internal staff application
+This portal does **not** run its own BetterAuth server. Authentication is delegated entirely to the main ATMS via server-side proxy routes.
 
-### BetterAuth Conventions
+### Session Cookies (set by proxy routes)
 
-- Use `authClient.signIn.email()` / `authClient.signUp.email()` for credential auth
-- Use `authClient.useSession()` hook to access session in client components
-- Protect API routes by calling `auth.api.getSession({ headers })` and returning 401 if null
-- Protect pages with middleware or server-side session checks
-- Refer to official docs: https://www.better-auth.com/docs
+| Cookie | Contents | Set by |
+|--------|----------|--------|
+| `better-auth.session_token` | ATMS session token (forwarded from ATMS `set-cookie`) | `client-sign-in` |
+| `session-user-id` | `user.id` (ClientUser CUID) — used as `X-Client-User-Id` | `client-sign-in` |
+| `selected-client` | JSON of selected client record | `client-select` |
+
+All cookies are `HttpOnly`, `SameSite: lax`, 8-hour TTL.
+
+### Proxy Auth Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/client-sign-in` | POST | Proxies to `ATMS /api/client-auth/sign-in/email`, sets session cookies |
+| `/api/client-sign-out` | POST | Calls `ATMS /api/v1/auth/sign-out` with `{ userId }`, clears all cookies |
+| `/api/client-clients` | GET | Proxies to `ATMS /api/v1/clients?clientUserId=` using system API key |
+| `/api/client-select` | POST | Stores selected client data in `selected-client` cookie |
+
+### Page Protection (Middleware)
+
+`src/proxy.ts` — checks for `better-auth.session_token` cookie using `getSessionCookie()` from `better-auth/cookies`. Redirects to `/sign-in` if missing. Covers `/dashboard/**` and `/portal/**`.
+
+This is an optimistic redirect only — it does not validate the token against the ATMS database. Individual route handlers must call `getPortalSession()` and return 401 if null.
+
+### ATMS Request Helper
+
+All ATMS `/api/v1/*` calls from portal route handlers **must** use the shared helper in `src/lib/atms.ts`:
+
+```typescript
+// src/app/api/some-route/route.ts
+import { atmsRequest, getPortalSession } from '@/lib/atms';
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const session = getPortalSession(request);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { clientUserId, selectedClient } = session;
+
+  const res = await atmsRequest(
+    `/api/v1/clients/${selectedClient.clientId}/employees`,
+    clientUserId
+  );
+
+  // PATCH example
+  const res2 = await atmsRequest(
+    `/api/v1/clients/${selectedClient.clientId}/info`,
+    clientUserId,
+    { method: 'PATCH', body: JSON.stringify({ portalName: 'new-name' }) }
+  );
+}
+```
+
+`atmsRequest` automatically adds:
+- `Authorization: Bearer {ATMS_API_KEY}` — system key
+- `X-Client-User-Id: {clientUserId}` — required by ATMS `verifyClientAccess`
+- `Content-Type: application/json`
+
+### Calls that do NOT need X-Client-User-Id
+
+| Call | Why |
+|------|-----|
+| Sign-in | Uses `Origin` header only |
+| Sign-out | Uses system key + `{ userId }` body |
+| Client list (select screen) | Uses system key + `?clientUserId=` query param |
 
 ---
 
@@ -331,7 +382,8 @@ useEffect(() => {
 - Place API routes under `src/app/api/` following Next.js App Router conventions
 - Use Route Handlers (`route.ts`) with named exports: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
 - Always validate request body with Zod before processing
-- Always check authentication via `auth.api.getSession({ headers })`
+- Always authenticate via `getPortalSession(request)` from `@/lib/atms` — return 401 if null
+- Use `atmsRequest()` from `@/lib/atms` for all ATMS `/api/v1/*` calls — never build the headers manually
 - Return consistent JSON responses:
   - Success: `NextResponse.json({ data: ... })`
   - Error: `NextResponse.json({ error: "..." }, { status: 4xx/5xx })`
