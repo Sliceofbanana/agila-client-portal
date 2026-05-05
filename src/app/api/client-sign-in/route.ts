@@ -49,13 +49,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const response = NextResponse.json({ user });
 
-    // Forward the ATMS session cookie to the browser so session checks work
-    const setCookie = loginRes.headers.get('set-cookie');
-    if (setCookie) {
-      response.headers.set('set-cookie', setCookie);
-    }
-
-    // Store userId in an HttpOnly cookie for use in the sign-out proxy
+    // Set portal cookies first via cookies.set() which manages its own Set-Cookie header.
+    // The ATMS session cookie is appended AFTER so it is never overwritten —
+    // cookies.set() internally calls headers.set() which would replace the entire header.
     response.cookies.set('session-user-id', user.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -64,7 +60,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxAge: 60 * 60 * 8, // 8 hours
     });
 
-    // Store user name for display in the portal UI
     response.cookies.set('session-user-name', user.name, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -72,6 +67,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: '/',
       maxAge: 60 * 60 * 8, // 8 hours
     });
+
+    // Append the ATMS session cookie(s) after portal cookies are committed.
+    // Use getSetCookie() to get each Set-Cookie header as a proper array
+    // (avoids the comma-joining bug of headers.get('set-cookie') with multiple values).
+    const atmsSetCookies: string[] =
+      typeof loginRes.headers.getSetCookie === 'function'
+        ? loginRes.headers.getSetCookie()
+        : (() => { const raw = loginRes.headers.get('set-cookie'); return raw ? [raw] : []; })();
+
+    for (const cookie of atmsSetCookies) {
+      response.headers.append('set-cookie', cookie);
+    }
 
     return response;
   } catch {
