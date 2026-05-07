@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Check, Building2, User, Briefcase, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Check, Building2, User, Briefcase, Loader2 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -55,10 +56,6 @@ interface FormData {
   spouseFirstName: string;
   spouseMiddleName: string;
   spouseLastName: string;
-  spouseEmploymentStatus: string;
-  spouseTin: string;
-  spouseEmployerName: string;
-  spouseEmployerTin: string;
   // Step 3 — Business
   tradeName: string;
   industry: string;
@@ -84,7 +81,6 @@ const INITIAL_FORM: FormData = {
   motherFirstName: '', motherMiddleName: '', motherLastName: '',
   fatherFirstName: '', fatherMiddleName: '', fatherLastName: '',
   spouseFirstName: '', spouseMiddleName: '', spouseLastName: '',
-  spouseEmploymentStatus: '', spouseTin: '', spouseEmployerName: '', spouseEmployerTin: '',
   tradeName: '', industry: '', lineOfBusiness: '', psicCode: '',
   landlineNumber: '', faxNumber: '',
   placeType: '', lessorName: '', lessorAddress: '', monthlyRent: '',
@@ -103,8 +99,6 @@ interface ClientInfoResponse {
       motherFirstName?: string | null; motherMiddleName?: string | null; motherLastName?: string | null;
       fatherFirstName?: string | null; fatherMiddleName?: string | null; fatherLastName?: string | null;
       spouseFirstName?: string | null; spouseMiddleName?: string | null; spouseLastName?: string | null;
-      spouseEmploymentStatus?: string | null; spouseTin?: string | null;
-      spouseEmployerName?: string | null; spouseEmployerTin?: string | null;
     } | null;
     businessDetails?: {
       tradeName?: string | null; industry?: string | null; lineOfBusiness?: string | null;
@@ -136,9 +130,7 @@ function mapResponseToForm(res: ClientInfoResponse): FormData {
     fatherFirstName: ind?.fatherFirstName ?? '', fatherMiddleName: ind?.fatherMiddleName ?? '',
     fatherLastName: ind?.fatherLastName ?? '',
     spouseFirstName: ind?.spouseFirstName ?? '', spouseMiddleName: ind?.spouseMiddleName ?? '',
-    spouseLastName: ind?.spouseLastName ?? '', spouseEmploymentStatus: ind?.spouseEmploymentStatus ?? '',
-    spouseTin: ind?.spouseTin ?? '', spouseEmployerName: ind?.spouseEmployerName ?? '',
-    spouseEmployerTin: ind?.spouseEmployerTin ?? '',
+    spouseLastName: ind?.spouseLastName ?? '',
     tradeName: biz?.tradeName ?? '', industry: biz?.industry ?? '',
     lineOfBusiness: biz?.lineOfBusiness ?? '', psicCode: biz?.psicCode ?? '',
     landlineNumber: biz?.landlineNumber ?? '', faxNumber: biz?.faxNumber ?? '',
@@ -369,24 +361,6 @@ function Step2({ data, set }: StepProps): React.ReactElement {
             <input type="text" value={data.spouseLastName} onChange={e => set('spouseLastName', e.target.value)} placeholder="Last name" className={inputCls} />
           </Field>
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Spouse Employment Status">
-            <input type="text" value={data.spouseEmploymentStatus} onChange={e => set('spouseEmploymentStatus', e.target.value)} placeholder="Employed / Self-employed / etc." className={inputCls} />
-          </Field>
-          <Field label="Spouse TIN">
-            <input type="text" value={data.spouseTin} onChange={e => set('spouseTin', e.target.value)} placeholder="000-000-000-000" className={inputCls} />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Spouse Employer Name">
-            <input type="text" value={data.spouseEmployerName} onChange={e => set('spouseEmployerName', e.target.value)} placeholder="Employer or business name" className={inputCls} />
-          </Field>
-          <Field label="Spouse Employer TIN">
-            <input type="text" value={data.spouseEmployerTin} onChange={e => set('spouseEmployerTin', e.target.value)} placeholder="000-000-000-000" className={inputCls} />
-          </Field>
-        </div>
       </div>
     </div>
   );
@@ -500,43 +474,46 @@ function Step3({ data, set }: StepProps): React.ReactElement {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-interface CompleteDetailsFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCompleted: () => void;
-  session: SessionInfo;
-}
-
-export function CompleteDetailsForm({
-  isOpen,
-  onClose,
-  onCompleted,
-  session,
-}: CompleteDetailsFormProps): React.ReactNode {
+export default function CompleteDetailsForm(): React.ReactNode {
+  const router = useRouter();
   const { success, error } = useToast();
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
+  const [session, setSession] = useState<SessionInfo>({
+    clientId: null,
+    companyCode: null,
+    clientNo: null,
+    businessEntity: null,
+    branchType: null,
+  });
 
-  // Reset step and done when form opens (adjust state during render)
-  const [prevIsOpen, setPrevIsOpen] = useState(false);
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-    if (isOpen) {
-      setStep(1);
-      setDone(false);
-    }
-  }
-
-  // When form opens: fetch existing data from API, overlay any saved draft
-  /* eslint-disable react-hooks/set-state-in-effect -- Fetching existing client data from API when form opens */
+  // On mount: fetch session then existing client data
+  /* eslint-disable react-hooks/set-state-in-effect -- Hydration-safe: fetching session and client data after mount */
   useEffect(() => {
-    if (!isOpen || !session.clientId) return;
-
     void (async () => {
       try {
-        const res = await fetch(`/api/clients/${session.clientId}/info`, { credentials: 'include' });
+        const sessionRes = await fetch('/api/portal-session', { credentials: 'include' });
+        const sessionData = await sessionRes.json() as {
+          clientId?: string | number | null;
+          companyCode?: string | null;
+          clientNo?: string | null;
+          businessEntity?: string | null;
+          branchType?: string | null;
+        };
+        const info: SessionInfo = {
+          clientId: sessionData.clientId ?? null,
+          companyCode: sessionData.companyCode ?? null,
+          clientNo: sessionData.clientNo ?? null,
+          businessEntity: sessionData.businessEntity ?? null,
+          branchType: sessionData.branchType ?? null,
+        };
+        setSession(info);
+
+        if (!info.clientId) return;
+
+        const res = await fetch(`/api/clients/${info.clientId}/info`, { credentials: 'include' });
         const json = await res.json() as ClientInfoResponse;
         const apiData = mapResponseToForm(json);
 
@@ -557,19 +534,16 @@ export function CompleteDetailsForm({
         // Silently fall through — form stays at INITIAL_FORM
       }
     })();
-  }, [isOpen, session.clientId]);
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Auto-save draft to localStorage every 5 seconds while form is open
+  // Auto-save draft to localStorage every 5 seconds
   useEffect(() => {
-    if (!isOpen) return;
     const t = setTimeout(() => {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
     }, 5000);
     return () => clearTimeout(t);
-  }, [formData, isOpen]);
-
-  if (!isOpen) return null;
+  }, [formData]);
 
   function set(field: keyof FormData, value: string): void {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -577,7 +551,7 @@ export function CompleteDetailsForm({
 
   function saveAndClose(): void {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-    onClose();
+    router.push('/dashboard');
   }
 
   async function handleSubmit(): Promise<void> {
@@ -614,10 +588,6 @@ export function CompleteDetailsForm({
           spouseFirstName: formData.spouseFirstName || undefined,
           spouseMiddleName: formData.spouseMiddleName || undefined,
           spouseLastName: formData.spouseLastName || undefined,
-          spouseEmploymentStatus: formData.spouseEmploymentStatus || undefined,
-          spouseTin: formData.spouseTin || undefined,
-          spouseEmployerName: formData.spouseEmployerName || undefined,
-          spouseEmployerTin: formData.spouseEmployerTin || undefined,
         },
         businessDetails: {
           tradeName: formData.tradeName || undefined,
@@ -664,16 +634,12 @@ export function CompleteDetailsForm({
     setStep(1);
     setFormData(INITIAL_FORM);
     setDone(false);
-    onCompleted();
+    router.push('/dashboard');
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={saveAndClose} />
-
-      {/* Panel */}
-      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl" style={{ maxHeight: '90vh' }}>
+    <div className="min-h-screen bg-background px-4 py-8">
+      <div className="mx-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
 
         {done ? (
           /* Thank You */
@@ -709,7 +675,7 @@ export function CompleteDetailsForm({
                   onClick={saveAndClose}
                   className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
-                  <X size={18} />
+                  <ArrowLeft size={18} />
                 </button>
               </div>
 
@@ -748,8 +714,8 @@ export function CompleteDetailsForm({
               </div>
             </div>
 
-            {/* Scrollable form body */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {/* Form body */}
+            <div className="px-6 py-5">
               {step === 1 && <Step1 data={formData} set={set} session={session} />}
               {step === 2 && <Step2 data={formData} set={set} session={session} />}
               {step === 3 && <Step3 data={formData} set={set} session={session} />}

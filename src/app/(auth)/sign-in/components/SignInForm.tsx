@@ -144,15 +144,6 @@ export default function SignInForm(): React.ReactNode {
         >
           {submitting ? 'Signing in…' : 'Log In'}
         </button>
-
-        {/* Dev bypass */}
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-          className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-md text-sm transition-colors border border-slate-300"
-        >
-          Go to Dashboard (Dev Bypass)
-        </button>
       </form>
 
       {/* Footer links */}
