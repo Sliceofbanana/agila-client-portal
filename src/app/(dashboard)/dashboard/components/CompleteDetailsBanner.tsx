@@ -22,21 +22,15 @@ export function CompleteDetailsBanner(): React.ReactNode {
   if (!mounted || completed) return null;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <AlertCircle className="mt-0.5 shrink-0 text-amber-500" size={18} />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-amber-900">
-            Your account details are incomplete
-          </p>
-          <p className="mt-0.5 text-xs text-amber-700">
-            Complete your business and personal information to unlock full access to your account.
-          </p>
-        </div>
-      </div>
+    <div className="flex items-center justify-center gap-3 border-b border-amber-300 bg-amber-50 px-5 py-2.5 shrink-0">
+      <AlertCircle className="shrink-0 text-amber-500" size={16} />
+      <p className="text-sm text-amber-900">
+        <span className="font-semibold">Your account details are incomplete.</span>
+        {' '}Complete your business and personal information to unlock full access.
+      </p>
       <button
         onClick={() => router.push('/dashboard/complete-details')}
-        className="shrink-0 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-[0.97]"
+        className="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-amber-600 active:scale-[0.97]"
       >
         Complete Details
       </button>

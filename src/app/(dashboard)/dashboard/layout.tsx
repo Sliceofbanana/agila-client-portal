@@ -13,6 +13,7 @@ import { Button } from '@/components/UI/button';
 import { RoleProvider } from '@/lib/role-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { CompleteDetailsBanner } from './components/CompleteDetailsBanner';
   
 
 
@@ -146,7 +147,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <RoleProvider>
       <AuthProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex flex-col h-screen overflow-hidden bg-background">
+        <CompleteDetailsBanner />
+        <div className="flex flex-1 overflow-hidden">
         <Sidebar
           isOpen={sidebarOpen}
           isExpanded={sidebarExpanded}
@@ -185,6 +188,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
             {children}
           </main>
+        </div>
         </div>
       </div>
       </AuthProvider>

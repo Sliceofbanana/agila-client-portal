@@ -7,7 +7,6 @@ import {
   ChevronDown, ChevronUp, Building2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { CompleteDetailsBanner } from './components/CompleteDetailsBanner';
 
 /* --- Data -------------------------------------------------------- */
 
@@ -120,6 +119,19 @@ const PROGRESS_BAR_COLOR: Record<TaskStatus, string> = {
   completed:   'bg-emerald-500',
 };
 
+const STATUS_CONFIG: Record<TaskStatus, { label: string; dot: string; badge: string }> = {
+  pending:     { label: 'Pending',     dot: 'bg-slate-400',   badge: 'bg-slate-100 text-slate-600' },
+  in_progress: { label: 'In Progress', dot: 'bg-blue-500',    badge: 'bg-blue-50 text-blue-700' },
+  for_review:  { label: 'For Review',  dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700' },
+  completed:   { label: 'Completed',   dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
+};
+
+const TEAM_CONFIG: Record<TaskTeam, { label: string; badge: string }> = {
+  compliance:      { label: 'Compliance',      badge: 'bg-violet-50 text-violet-700' },
+  liaison:         { label: 'Liaison',         badge: 'bg-orange-50 text-orange-700' },
+  account_officer: { label: 'Account Officer', badge: 'bg-teal-50 text-teal-700' },
+};
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -176,9 +188,6 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto pb-16 space-y-8">
 
-      {/* -- Incomplete details banner --------------------------- */}
-      <CompleteDetailsBanner />
-
       {/* -- Hero ----------------------------------------------- */}
       <section className="relative overflow-hidden rounded-2xl bg-linear-to-br from-blue-600 via-blue-700 to-blue-900 text-white p-8 shadow-xl">
         <div className="pointer-events-none absolute -top-12 -right-12 h-52 w-52 rounded-full bg-white/5" />
@@ -217,27 +226,24 @@ export default function DashboardPage() {
 
       {/* ── Task Progress Tracker ────────────────────────────── */}
       <section className="space-y-4">
-        <div className="px-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Service Progress</p>
-          <h2 className="mt-1 text-lg font-bold text-foreground">Your Task Tracker</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time visibility into your active tasks handled by our team — no need to call.
-          </p>
+        <div className="flex items-end justify-between px-1">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Service Progress</p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">Your Task Tracker</h2>
+          </div>
         </div>
 
-        {/* Summary pills */}
+        {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'In Progress', value: activeTasks.filter(t => t.status === 'in_progress').length, color: 'text-blue-600',   bg: 'bg-blue-50 border-blue-200',   dot: 'bg-blue-500' },
-            { label: 'For Review',  value: activeTasks.filter(t => t.status === 'for_review').length,  color: 'text-amber-600',  bg: 'bg-amber-50 border-amber-200',  dot: 'bg-amber-500' },
-            { label: 'Pending',     value: activeTasks.filter(t => t.status === 'pending').length,     color: 'text-slate-600',  bg: 'bg-slate-50 border-slate-200',  dot: 'bg-slate-400' },
+            { label: 'In Progress', value: activeTasks.filter(t => t.status === 'in_progress').length, color: 'text-blue-600',  bg: 'bg-blue-50 border-blue-200',  bar: 'bg-blue-500' },
+            { label: 'For Review',  value: activeTasks.filter(t => t.status === 'for_review').length,  color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500' },
+            { label: 'Pending',     value: activeTasks.filter(t => t.status === 'pending').length,     color: 'text-slate-600', bg: 'bg-slate-50 border-slate-200', bar: 'bg-slate-400' },
           ].map(s => (
-            <div key={s.label} className={`rounded-xl border ${s.bg} px-4 py-3 flex items-center gap-3`}>
-              <span className={`h-2.5 w-2.5 rounded-full ${s.dot} shrink-0`} />
-              <div>
-                <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{s.label}</p>
-              </div>
+            <div key={s.label} className={`rounded-xl border ${s.bg} p-4`}>
+              <p className={`text-2xl font-extrabold leading-none ${s.color}`}>{s.value}</p>
+              <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{s.label}</p>
+              <div className={`mt-3 h-1 rounded-full ${s.bar} opacity-50`} />
             </div>
           ))}
         </div>
@@ -247,7 +253,9 @@ export default function DashboardPage() {
 
           {/* Period filter header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Active Tasks</p>
+            <p className="text-sm font-semibold text-foreground">Active Tasks
+              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{filteredTasks.length}</span>
+            </p>
             <div className="flex gap-1">
               {(['all', 'month', 'quarter', 'year'] as const).map(p => (
                 <button
@@ -259,7 +267,7 @@ export default function DashboardPage() {
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
-                  {p === 'all' ? 'All' : p === 'month' ? 'Monthly' : p === 'quarter' ? 'Quarterly' : 'Yearly'}
+                  {p === 'all' ? 'All' : p === 'month' ? 'This Month' : p === 'quarter' ? 'This Quarter' : 'This Year'}
                 </button>
               ))}
             </div>
@@ -273,8 +281,9 @@ export default function DashboardPage() {
               </div>
             )}
             {filteredTasks.map(task => {
-              const barColor = PROGRESS_BAR_COLOR[task.status];
               const isExpanded = expandedTask === task.id;
+              const statusCfg = STATUS_CONFIG[task.status];
+              const teamCfg   = TEAM_CONFIG[task.team];
 
               return (
                 <div key={task.id} className="transition-colors hover:bg-muted/30">
@@ -282,30 +291,58 @@ export default function DashboardPage() {
                     onClick={() => setExpandedTask(isExpanded ? null : task.id)}
                     className="w-full text-left px-5 py-4"
                   >
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <p className="text-sm font-semibold text-foreground leading-snug flex-1 min-w-0">{task.title}</p>
+                    {/* Row 1: title + badges + chevron */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                        <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusCfg.dot}`} />
+                        <p className="text-sm font-semibold text-foreground leading-snug">{task.title}</p>
+                      </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-bold text-muted-foreground">{task.progress}%</span>
-                        {isExpanded ? <ChevronUp size={15} className="text-muted-foreground" /> : <ChevronDown size={15} className="text-muted-foreground" />}
+                        <span className={`hidden sm:inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${statusCfg.badge}`}>
+                          {statusCfg.label}
+                        </span>
+                        {isExpanded
+                          ? <ChevronUp size={14} className="text-muted-foreground" />
+                          : <ChevronDown size={14} className="text-muted-foreground" />}
                       </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${barColor} transition-all duration-700`}
-                        style={{ width: `${task.progress}%` }}
-                      />
+
+                    {/* Row 2: meta tags */}
+                    <div className="mt-2 ml-4 flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${teamCfg.badge}`}>
+                        {teamCfg.label}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">Due {task.dueDate}</span>
+                      <span className="text-[11px] text-muted-foreground hidden sm:inline">· {task.assignedTo}</span>
+                    </div>
+
+                    {/* Row 3: progress bar */}
+                    <div className="mt-3 ml-4 flex items-center gap-3">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${PROGRESS_BAR_COLOR[task.status]} transition-all duration-700`}
+                          style={{ width: `${task.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-bold tabular-nums text-muted-foreground w-8 text-right">{task.progress}%</span>
                     </div>
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-border bg-muted/40 px-5 py-4 flex flex-col sm:flex-row gap-4 text-xs">
+                    <div className="border-t border-border bg-muted/30 px-5 py-4 flex flex-col sm:flex-row gap-4 text-xs">
                       <div className="flex-1">
-                        <p className="font-semibold text-muted-foreground uppercase tracking-wide mb-1">Description</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Description</p>
                         <p className="text-foreground leading-relaxed">{task.description}</p>
                       </div>
-                      <div className="shrink-0">
-                        <p className="font-semibold text-muted-foreground uppercase tracking-wide mb-1">Due Date</p>
-                        <p className="font-medium text-foreground">{task.dueDate}</p>
+                      <div className="flex gap-6 shrink-0 sm:flex-col sm:gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Assigned To</p>
+                          <p className="font-semibold text-foreground">{task.assignedTo}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Due Date</p>
+                          <p className="font-semibold text-foreground">{task.dueDate}</p>
+                        </div>
                       </div>
                     </div>
                   )}
